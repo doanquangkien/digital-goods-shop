@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MecWish - Trang Chủ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Font Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; } [x-cloak] { display: none !important; }</style>
+</head>
+<body class="bg-gray-50 text-gray-800 pb-20" x-data="homeApp()">
+
+    <!-- HEADER -->
+    <header class="fixed top-0 inset-x-0 z-40 bg-white/90 backdrop-blur shadow-sm h-16 flex items-center px-4 justify-between">
+        <a href="index.html" class="text-2xl font-extrabold flex items-center gap-2">
+            <span class="bg-blue-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm">M</span>
+            <span class="text-gray-800">Mec<span class="text-blue-600">Wish</span></span>
+        </a>
+        <div class="relative">
+            <i class="fas fa-shopping-cart text-xl text-gray-600"></i>
+            <!-- Cart Badge Demo -->
+            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">0</span>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="mt-20 px-4 max-w-6xl mx-auto space-y-8">
+        
+        <!-- Hero Banner (Static) -->
+        <div class="rounded-3xl bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8 shadow-xl">
+            <h1 class="text-3xl font-bold mb-2">Nâng cấp tài khoản</h1>
+            <p class="text-blue-100 mb-4">Chính chủ, giá rẻ, bảo hành trọn đời.</p>
+        </div>
+
+        <!-- 1. DANH MỤC (Lấy từ DB) -->
+        <div>
+            <h2 class="font-bold text-gray-800 mb-3 text-lg">Danh mục</h2>
+            <div class="flex gap-3 overflow-x-auto no-scrollbar pb-2" x-show="!loading">
+                <template x-for="cat in categories" :key="cat.id">
+                    <a :href="`category.html?id=${cat.id}`" class="flex flex-col items-center gap-2 min-w-[80px]">
+                        <div class="w-16 h-16 rounded-2xl bg-white border border-gray-200 flex items-center justify-center shadow-sm text-2xl text-blue-600">
+                            <i class="fas fa-folder"></i> <!-- Có thể thay bằng ảnh từ DB -->
+                        </div>
+                        <span class="text-xs font-medium text-gray-600 whitespace-nowrap" x-text="cat.name"></span>
+                    </a>
+                </template>
+            </div>
+            <!-- Loading Skeleton -->
+            <div x-show="loading" class="flex gap-3"><div class="w-16 h-16 bg-gray-200 rounded-2xl animate-pulse"></div><div class="w-16 h-16 bg-gray-200 rounded-2xl animate-pulse"></div></div>
+        </div>
+
+        <!-- 2. SẢN PHẨM NỔI BẬT (Lấy từ DB) -->
+        <div>
+            <h2 class="font-bold text-gray-800 mb-3 text-lg flex items-center gap-2">
+                <span class="w-1.5 h-6 bg-blue-600 rounded-full"></span> Sản phẩm nổi bật
+            </h2>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4" x-show="!loading">
+                <template x-for="product in featuredProducts" :key="product.id">
+                    <a :href="`product.html?id=${product.id}`" class="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 block hover:-translate-y-1 transition">
+                        <!-- Image -->
+                        <div class="aspect-square rounded-xl bg-gray-100 mb-3 overflow-hidden">
+                            <img :src="product.images[0]" class="w-full h-full object-cover" alt="Product Image">
+                        </div>
+                        <!-- Info -->
+                        <h3 class="font-bold text-gray-800 text-sm line-clamp-2 min-h-[2.5rem]" x-text="product.name"></h3>
+                        <div class="mt-2 flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-400">Chỉ từ</p>
+                                <p class="text-blue-600 font-bold" x-text="formatCurrency(product.min_price)"></p>
+                            </div>
+                            <button class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </a>
+                </template>
+            </div>
+            <!-- Loading Skeleton -->
+            <div x-show="loading" class="grid grid-cols-2 gap-4"><div class="h-48 bg-gray-200 rounded-2xl animate-pulse"></div><div class="h-48 bg-gray-200 rounded-2xl animate-pulse"></div></div>
+        </div>
+
+    </main>
+
+    <!-- SCRIPTS -->
+    <script src="../js/supabase.js"></script>
+    <script>
+        function homeApp() {
+            return {
+                loading: true,
+                categories: [],
+                featuredProducts: [],
+
+                async init() {
+                    console.log('App init...');
+                    
+                    // 1. Lấy Danh mục
+                    const { data: cats, error: errCat } = await supabase.from('categories').select('*');
+                    if(cats) this.categories = cats;
+
+                    // 2. Lấy Sản phẩm nổi bật + Giá thấp nhất từ bảng Variants
+                    // Lưu ý: Supabase JS cho phép query lồng nhau
+                    const { data: prods, error: errProd } = await supabase
+                        .from('products')
+                        .select('*, product_variants(price)')
+                        .eq('is_featured', true)
+                        .eq('status', 'active');
+
+                    if(prods) {
+                        // Xử lý dữ liệu: Tìm giá thấp nhất trong các variant để hiển thị "Chỉ từ..."
+                        this.featuredProducts = prods.map(p => {
+                            const prices = p.product_variants.map(v => v.price);
+                            const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+                            return { ...p, min_price: minPrice };
+                        });
+                    }
+
+                    this.loading = false;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
