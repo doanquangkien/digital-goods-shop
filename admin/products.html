@@ -12,7 +12,6 @@
     <style>
         body { font-family: 'Poppins', sans-serif; }
         [x-cloak] { display: none !important; }
-        /* Custom Scrollbar */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
@@ -21,7 +20,7 @@
 <body class="bg-gray-100" x-data="productsManager()">
 
     <div class="flex h-screen overflow-hidden">
-        <!-- SIDEBAR (Giống Dashboard) -->
+        <!-- SIDEBAR -->
         <aside class="w-64 bg-white border-r border-gray-200 hidden lg:flex flex-col">
             <div class="h-16 flex items-center justify-center border-b border-gray-100">
                 <span class="text-xl font-bold text-blue-600">MECWISH</span>
@@ -56,7 +55,7 @@
                             <th class="px-6 py-3">Ảnh</th>
                             <th class="px-6 py-3">Tên sản phẩm</th>
                             <th class="px-6 py-3">Danh mục</th>
-                            <th class="px-6 py-3">Trạng thái</th>
+                            <th class="px-6 py-3">Giá (Min)</th>
                             <th class="px-6 py-3 text-right">Hành động</th>
                         </tr>
                     </thead>
@@ -66,13 +65,12 @@
                                 <td class="px-6 py-4">
                                     <img :src="p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/50'" class="w-12 h-12 rounded object-cover border">
                                 </td>
-                                <td class="px-6 py-4 font-medium text-gray-800" x-text="p.name"></td>
-                                <td class="px-6 py-4 text-sm text-gray-600" x-text="p.categories?.name"></td>
                                 <td class="px-6 py-4">
-                                    <span class="px-2 py-1 rounded text-xs font-bold" 
-                                          :class="p.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
-                                          x-text="p.status"></span>
+                                    <div class="font-medium text-gray-800" x-text="p.name"></div>
+                                    <div class="text-xs text-gray-500" x-show="p.status === 'draft'">Bản nháp</div>
                                 </td>
+                                <td class="px-6 py-4 text-sm text-gray-600" x-text="p.categories?.name"></td>
+                                <td class="px-6 py-4 font-bold text-blue-600" x-text="formatCurrency(p.min_price)"></td>
                                 <td class="px-6 py-4 text-right">
                                     <button @click="deleteProduct(p.id)" class="text-red-500 hover:text-red-700 p-2"><i class="fas fa-trash"></i></button>
                                 </td>
@@ -87,59 +85,69 @@
         </main>
     </div>
 
-    <!-- MODAL THÊM SẢN PHẨM -->
+    <!-- MODAL (Nâng cấp) -->
     <div x-show="isModalOpen" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center">
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" @click="isModalOpen = false"></div>
 
-            <div class="inline-block w-full max-w-2xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl relative">
+            <div class="inline-block w-full max-w-3xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl relative">
                 <h3 class="text-lg font-bold text-gray-900 mb-4">Thêm sản phẩm mới</h3>
                 
-                <form @submit.prevent="createProduct" class="space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar pr-2">
+                <form @submit.prevent="createProduct" class="space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar pr-2">
                     
-                    <!-- Tên & Slug -->
+                    <!-- Hàng 1: Tên & Slug -->
                     <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tên SP</label>
+                        <div class="col-span-1">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tên SP <span class="text-red-500">*</span></label>
                             <input type="text" x-model="form.name" @input="generateSlug()" class="w-full border border-gray-300 rounded-lg p-2 focus:border-blue-500 outline-none" required>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Slug (URL)</label>
+                        <div class="col-span-1">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Slug</label>
                             <input type="text" x-model="form.slug" class="w-full border border-gray-300 rounded-lg p-2 bg-gray-50" readonly>
                         </div>
                     </div>
 
-                    <!-- Danh mục & Trạng thái -->
+                    <!-- Hàng 2: Danh mục (Có nút thêm nhanh) & Trạng thái -->
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Danh mục</label>
-                            <select x-model="form.category_id" class="w-full border border-gray-300 rounded-lg p-2 outline-none">
-                                <template x-for="c in categories" :key="c.id">
-                                    <option :value="c.id" x-text="c.name"></option>
-                                </template>
-                            </select>
+                            <div class="flex gap-2">
+                                <select x-model="form.category_id" class="w-full border border-gray-300 rounded-lg p-2 outline-none">
+                                    <template x-for="c in categories" :key="c.id">
+                                        <option :value="c.id" x-text="c.name"></option>
+                                    </template>
+                                </select>
+                                <button type="button" @click="quickAddCategory" class="bg-gray-200 px-3 rounded-lg hover:bg-gray-300" title="Thêm danh mục mới"><i class="fas fa-plus"></i></button>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Trạng thái</label>
                             <select x-model="form.status" class="w-full border border-gray-300 rounded-lg p-2 outline-none">
-                                <option value="active">Đang bán (Active)</option>
-                                <option value="draft">Nháp (Draft)</option>
+                                <option value="active">Đang bán</option>
+                                <option value="draft">Nháp</option>
                             </select>
                         </div>
                     </div>
 
-                    <!-- Gói giá mặc định (Default Variant) -->
-                    <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                        <p class="text-xs font-bold text-blue-600 uppercase mb-2">Cấu hình giá (Gói mặc định)</p>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-xs text-gray-500">Tên gói (VD: 1 Tháng)</label>
-                                <input type="text" x-model="form.variant_name" class="w-full border border-gray-300 rounded p-2" required>
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500">Giá bán (VNĐ)</label>
-                                <input type="number" x-model="form.price" class="w-full border border-gray-300 rounded p-2 font-bold" required>
-                            </div>
+                    <!-- Khu vực cấu hình giá (Variants) - NÂNG CẤP -->
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <div class="flex justify-between items-center mb-3">
+                            <p class="text-sm font-bold text-blue-800 uppercase">Cấu hình giá (Gói)</p>
+                            <button type="button" @click="addVariantRow" class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">+ Thêm gói</button>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <template x-for="(v, index) in form.variants" :key="index">
+                                <div class="flex gap-2 items-center">
+                                    <input type="text" x-model="v.name" placeholder="Tên gói (VD: 1 Tháng)" class="flex-1 border border-gray-300 rounded p-2 text-sm" required>
+                                    <input type="number" x-model="v.price" placeholder="Giá bán" class="w-32 border border-gray-300 rounded p-2 text-sm font-bold" required>
+                                    <input type="number" x-model="v.original_price" placeholder="Giá gốc (Gạch)" class="w-32 border border-gray-300 rounded p-2 text-sm text-gray-500">
+                                    
+                                    <button type="button" @click="removeVariantRow(index)" class="text-red-500 hover:text-red-700 p-2" x-show="form.variants.length > 1">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </template>
                         </div>
                     </div>
 
@@ -149,44 +157,36 @@
                         <textarea x-model="form.description" class="w-full border border-gray-300 rounded-lg p-2 h-24 outline-none"></textarea>
                     </div>
 
-                    <!-- Ảnh (Upload & Link) -->
+                    <!-- Upload Ảnh -->
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Hình ảnh</label>
-                        
-                        <!-- Cách 1: Dán Link -->
-                        <div class="flex gap-2 mb-2">
-                            <input type="text" x-model="tempImageUrl" placeholder="Dán link ảnh vào đây..." class="flex-1 border border-gray-300 rounded-lg p-2 text-sm">
-                            <button type="button" @click="addImageFromUrl()" class="bg-gray-200 px-3 rounded-lg text-sm font-bold hover:bg-gray-300">Thêm</button>
-                        </div>
-                        
-                        <!-- Cách 2: Upload File -->
-                        <div class="mb-2">
-                             <label class="cursor-pointer bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold inline-block hover:bg-blue-100">
-                                <i class="fas fa-cloud-upload-alt mr-1"></i> Tải ảnh lên
-                                <input type="file" @change="uploadImage" class="hidden" accept="image/*">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Hình ảnh (Tối đa 12)</label>
+                        <div class="flex flex-wrap gap-3">
+                            <!-- Nút upload -->
+                            <label class="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:text-blue-500 transition bg-gray-50">
+                                <i class="fas fa-camera text-xl mb-1"></i>
+                                <span class="text-[10px] font-bold">Thêm</span>
+                                <input type="file" @change="uploadImage" class="hidden" accept="image/*" multiple>
                             </label>
-                            <span x-show="uploading" class="text-sm text-gray-500 ml-2 animate-pulse">Đang tải lên...</span>
-                        </div>
 
-                        <!-- Preview Grid -->
-                        <div class="grid grid-cols-4 gap-2 mt-2">
+                            <!-- Ảnh Preview -->
                             <template x-for="(img, index) in form.images" :key="index">
-                                <div class="relative group aspect-square rounded-lg overflow-hidden border">
+                                <div class="w-20 h-20 relative group rounded-lg overflow-hidden border border-gray-200">
                                     <img :src="img" class="w-full h-full object-cover">
-                                    <button type="button" @click="removeImage(index)" class="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                                        <i class="fas fa-times"></i>
+                                    <button type="button" @click="removeImage(index)" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                        <i class="fas fa-times text-xs"></i>
                                     </button>
                                 </div>
                             </template>
                         </div>
+                        <p x-show="uploading" class="text-xs text-blue-600 mt-1 animate-pulse">Đang tải ảnh lên...</p>
                     </div>
 
                     <!-- Actions -->
                     <div class="flex justify-end gap-3 pt-4 border-t">
                         <button type="button" @click="isModalOpen = false" class="px-4 py-2 bg-gray-100 rounded-lg font-bold text-gray-600 hover:bg-gray-200">Hủy</button>
-                        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-lg" :disabled="isLoading">
+                        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-lg flex items-center gap-2" :disabled="isLoading">
                             <span x-show="!isLoading">Lưu sản phẩm</span>
-                            <span x-show="isLoading"><i class="fas fa-spinner fa-spin"></i> Xử lý...</span>
+                            <span x-show="isLoading"><i class="fas fa-spinner fa-spin"></i> Đang lưu...</span>
                         </button>
                     </div>
                 </form>
@@ -194,7 +194,7 @@
         </div>
     </div>
 
-    <!-- LOGIC -->
+    <!-- SCRIPT -->
     <script src="../js/supabase.js"></script>
     <script src="../js/auth.js"></script>
     <script>
@@ -205,7 +205,6 @@
                 isModalOpen: false,
                 isLoading: false,
                 uploading: false,
-                tempImageUrl: '',
                 
                 // Form Data
                 form: {
@@ -215,31 +214,64 @@
                     description: '',
                     status: 'active',
                     images: [],
-                    // Variant Info
-                    variant_name: '1 Tháng',
-                    price: ''
+                    variants: [] // Array chứa danh sách gói giá
                 },
 
                 async init() {
+                    await this.checkLogin(); // Kiểm tra login trước
                     this.fetchCategories();
                     this.fetchProducts();
+                },
+
+                async checkLogin() {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) {
+                        alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại!");
+                        window.location.href = 'index.html';
+                    }
                 },
 
                 async fetchCategories() {
                     const { data } = await supabase.from('categories').select('*');
                     if (data) {
                         this.categories = data;
-                        if(data.length > 0) this.form.category_id = data[0].id;
+                        if(data.length > 0 && !this.form.category_id) this.form.category_id = data[0].id;
+                    }
+                },
+
+                // Logic mới: Thêm danh mục nhanh
+                async quickAddCategory() {
+                    const name = prompt("Nhập tên danh mục mới:");
+                    if (name) {
+                        const slug = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "-");
+                        const { data, error } = await supabase
+                            .from('categories')
+                            .insert([{ name: name, slug: slug + '-' + Date.now() }])
+                            .select()
+                            .single();
+                        
+                        if (error) {
+                            alert("Lỗi tạo danh mục: " + error.message);
+                        } else {
+                            await this.fetchCategories(); // Load lại list
+                            this.form.category_id = data.id; // Tự chọn danh mục vừa tạo
+                        }
                     }
                 },
 
                 async fetchProducts() {
-                    // Lấy sản phẩm kèm tên danh mục
                     const { data } = await supabase
                         .from('products')
-                        .select('*, categories(name)')
+                        .select('*, categories(name), product_variants(price)')
                         .order('created_at', { ascending: false });
-                    if (data) this.products = data;
+                    
+                    if (data) {
+                        // Tính giá min để hiển thị ra bảng
+                        this.products = data.map(p => {
+                            const prices = p.product_variants.map(v => v.price);
+                            return { ...p, min_price: prices.length > 0 ? Math.min(...prices) : 0 };
+                        });
+                    }
                 },
 
                 openModal() {
@@ -247,97 +279,108 @@
                     this.isModalOpen = true;
                 },
 
+                // Xử lý Variant (Thêm/Xóa dòng)
+                addVariantRow() {
+                    this.form.variants.push({ name: '', price: '', original_price: '' });
+                },
+                removeVariantRow(index) {
+                    this.form.variants.splice(index, 1);
+                },
+
                 generateSlug() {
-                    // Chuyển tên thành slug: "Netflix Premium" -> "netflix-premium"
                     const slug = this.form.name.toLowerCase()
                         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
                         .replace(/[đĐ]/g, "d")
                         .replace(/[^a-z0-9\s]/g, "")
                         .replace(/\s+/g, "-");
-                    this.form.slug = slug + '-' + Math.floor(Math.random() * 1000); // Thêm số ngẫu nhiên để tránh trùng
+                    this.form.slug = slug + '-' + Math.floor(Math.random() * 1000);
                 },
 
-                addImageFromUrl() {
-                    if(this.tempImageUrl) {
-                        this.form.images.push(this.tempImageUrl);
-                        this.tempImageUrl = '';
+                async uploadImage(event) {
+                    const files = event.target.files;
+                    if (!files || files.length === 0) return;
+
+                    this.uploading = true;
+                    
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        const fileName = Date.now() + '-' + Math.random().toString(36).substring(7);
+                        
+                        const { error } = await supabase.storage
+                            .from('mecwish_images')
+                            .upload(fileName, file);
+
+                        if (!error) {
+                            const { data: { publicUrl } } = supabase.storage
+                                .from('mecwish_images')
+                                .getPublicUrl(fileName);
+                            this.form.images.push(publicUrl);
+                        }
                     }
+                    this.uploading = false;
                 },
 
                 removeImage(index) {
                     this.form.images.splice(index, 1);
                 },
 
-                async uploadImage(event) {
-                    const file = event.target.files[0];
-                    if (!file) return;
-
-                    this.uploading = true;
-                    const fileName = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9.]/g, ''); // Tên file an toàn
-                    
-                    // Upload vào Bucket 'mecwish_images'
-                    const { data, error } = await supabase.storage
-                        .from('mecwish_images')
-                        .upload(fileName, file);
-
-                    if (error) {
-                        alert('Lỗi upload: ' + error.message);
-                    } else {
-                        // Lấy Public URL
-                        const { data: { publicUrl } } = supabase.storage
-                            .from('mecwish_images')
-                            .getPublicUrl(fileName);
-                        this.form.images.push(publicUrl);
-                    }
-                    this.uploading = false;
-                },
-
                 async createProduct() {
-                    this.isLoading = true;
-
-                    // 1. Tạo Sản phẩm vào bảng 'products'
-                    const { data: prodData, error: prodError } = await supabase
-                        .from('products')
-                        .insert([{
-                            name: this.form.name,
-                            slug: this.form.slug,
-                            category_id: this.form.category_id,
-                            description: this.form.description,
-                            status: this.form.status,
-                            images: this.form.images,
-                            is_featured: true
-                        }])
-                        .select()
-                        .single();
-
-                    if (prodError) {
-                        alert('Lỗi tạo SP: ' + prodError.message);
-                        this.isLoading = false;
+                    // Validation cơ bản
+                    if (this.form.variants.length === 0) {
+                        alert("Vui lòng thêm ít nhất 1 gói giá!");
                         return;
                     }
 
-                    // 2. Tạo Gói giá vào bảng 'product_variants'
-                    const { error: varError } = await supabase
-                        .from('product_variants')
-                        .insert([{
-                            product_id: prodData.id,
-                            name: this.form.variant_name,
-                            price: this.form.price,
-                            stock_status: true
-                        }]);
+                    this.isLoading = true;
+                    try {
+                        // 1. Insert Products
+                        const { data: prodData, error: prodError } = await supabase
+                            .from('products')
+                            .insert([{
+                                name: this.form.name,
+                                slug: this.form.slug,
+                                category_id: this.form.category_id,
+                                description: this.form.description,
+                                status: this.form.status,
+                                images: this.form.images,
+                                is_featured: true
+                            }])
+                            .select()
+                            .single();
 
-                    if (varError) {
-                        alert('Lỗi tạo giá: ' + varError.message);
-                    } else {
+                        if (prodError) throw prodError;
+
+                        // 2. Prepare Variants Data
+                        const variantsData = this.form.variants.map(v => ({
+                            product_id: prodData.id,
+                            name: v.name,
+                            price: parseFloat(v.price), // Đảm bảo là số
+                            original_price: v.original_price ? parseFloat(v.original_price) : null,
+                            stock_status: true
+                        }));
+
+                        // 3. Insert Variants (Bulk Insert)
+                        const { error: varError } = await supabase
+                            .from('product_variants')
+                            .insert(variantsData);
+
+                        if (varError) throw varError;
+
                         alert('Thêm sản phẩm thành công!');
                         this.isModalOpen = false;
-                        this.fetchProducts(); // Load lại bảng
+                        this.fetchProducts();
+
+                    } catch (error) {
+                        console.error(error);
+                        alert('LỖI: ' + error.message + ' (Xem Console để biết chi tiết)');
+                    } finally {
+                        // Luôn chạy dòng này để tắt vòng xoay
+                        this.isLoading = false;
                     }
-                    this.isLoading = false;
                 },
-                
+
                 async deleteProduct(id) {
-                    if(confirm('Bạn có chắc muốn xóa sản phẩm này?')) {
+                    if(confirm('Xóa sản phẩm này sẽ xóa cả các gói giá đi kèm. Tiếp tục?')) {
                         await supabase.from('products').delete().eq('id', id);
                         this.fetchProducts();
                     }
@@ -346,7 +389,7 @@
                 resetForm() {
                     this.form = {
                         name: '', slug: '', description: '', status: 'active', images: [],
-                        variant_name: '1 Tháng', price: '',
+                        variants: [{ name: 'Gói 1 Tháng', price: '', original_price: '' }], // Mặc định 1 dòng
                         category_id: this.categories.length > 0 ? this.categories[0].id : ''
                     };
                 }
