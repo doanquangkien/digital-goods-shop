@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Danh mục sản phẩm</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Poppins', sans-serif; }</style>
+</head>
+<body class="bg-gray-50 text-gray-800" x-data="categoryApp()">
+
+    <!-- Header -->
+    <header class="fixed top-0 inset-x-0 z-40 bg-white shadow-sm h-16 flex items-center px-4">
+        <a href="index.html" class="text-gray-600 mr-4"><i class="fas fa-arrow-left text-xl"></i></a>
+        <h1 class="font-bold text-lg" x-text="categoryName || 'Đang tải...'"></h1>
+    </header>
+
+    <main class="mt-20 px-4 max-w-6xl mx-auto">
+        <!-- List Products -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" x-show="products.length > 0">
+            <template x-for="product in products" :key="product.id">
+                <a :href="`product.html?id=${product.id}`" class="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 block hover:-translate-y-1 transition">
+                    <div class="aspect-square rounded-xl bg-gray-100 mb-3 overflow-hidden">
+                        <img :src="product.images[0]" class="w-full h-full object-cover">
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-sm line-clamp-2 min-h-[2.5rem]" x-text="product.name"></h3>
+                    <p class="text-blue-600 font-bold mt-2" x-text="formatCurrency(product.min_price)"></p>
+                </a>
+            </template>
+        </div>
+
+        <div x-show="!loading && products.length === 0" class="text-center mt-10 text-gray-500">
+            <p>Chưa có sản phẩm nào trong danh mục này.</p>
+        </div>
+    </main>
+
+    <script src="../js/supabase.js"></script>
+    <script>
+        function categoryApp() {
+            return {
+                loading: true,
+                categoryName: '',
+                products: [],
+
+                async init() {
+                    const catId = getQueryParam('id');
+                    if(!catId) return;
+
+                    // 1. Lấy tên danh mục
+                    const { data: cat } = await supabase.from('categories').select('name').eq('id', catId).single();
+                    if(cat) this.categoryName = cat.name;
+
+                    // 2. Lấy sản phẩm thuộc danh mục
+                    const { data: prods } = await supabase
+                        .from('products')
+                        .select('*, product_variants(price)')
+                        .eq('category_id', catId)
+                        .eq('status', 'active');
+
+                    if(prods) {
+                        this.products = prods.map(p => {
+                            const prices = p.product_variants.map(v => v.price);
+                            return { ...p, min_price: prices.length > 0 ? Math.min(...prices) : 0 };
+                        });
+                    }
+                    this.loading = false;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
